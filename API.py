@@ -1,5 +1,7 @@
 from fastapi import APIRouter, FastAPI, Depends, Response
 from typing import Annotated
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 
 from models import *
 
@@ -63,9 +65,15 @@ def generar_reporte(*,
 @reportes.get("/historial_reportes")
 def ver_historial(*,
                   id_usuario: int,
+                  estatus: str = None,
+                  tipo_report: str = None,
+                  urgencia: bool = False,
                   response: Response,
                   service: Annotated[Repo, Depends()]):
-    status, res = service.ver_historial(id_usuario=id_usuario)
+    status, res = service.ver_historial(id_usuario=id_usuario,
+                                        estatus=estatus,
+                                        tipo_report=tipo_report,
+                                        urgencia=urgencia)
     if status:
         response.status_code = 200
     else:
@@ -101,10 +109,14 @@ def repostear_reporte(*,
 
 @reportes.get("/lista_reportes")
 def ver_reportes(*,
-                 id_usuario: int,
+                 estatus: str = None,
+                 tipo_report: str = None,
+                 urgencia: bool = False,
                  response: Response,
                  service: Annotated[Repo, Depends()]):
-    status, res = service.ver_reportes(id_usuario=id_usuario)
+    status, res = service.ver_reportes(estatus=estatus,
+                                       tipo_report=tipo_report,
+                                       urgencia=urgencia)
     if status:
         response.status_code = 200
     else:
@@ -141,10 +153,23 @@ def actualizar_estado(*,
 @reportes.patch("/reasignar_reporte")
 def reasignar(*,
               id_reporte: int,
-              id_usuario: int,
+              responsable: int,
               response: Response,
               service: Annotated[Repo, Depends()]):
-    status, res = service.reasignar(id_reporte=id_reporte, id_usuario=id_usuario)
+    status, res = service.reasignar(id_reporte=id_reporte, responsable=responsable)
+    if status:
+        response.status_code = 200
+    else:
+        response.status_code = 501
+    return res
+
+@reportes.put("/evidencias_atendido")
+def evidencias_atendido(*,
+                        id_reporte: int,
+                        data: EvidenciasAtendido,
+                        response: Response,
+                        service: Annotated[Repo, Depends()]):
+    status, res = service.evidencias_atendido(id_reporte=id_reporte, data=data)
     if status:
         response.status_code = 200
     else:
@@ -154,3 +179,4 @@ def reasignar(*,
 
 app.include_router(usuarios)
 app.include_router(reportes)
+

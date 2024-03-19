@@ -7,14 +7,22 @@ class RegistrarUsuario(BaseModel):
     cargo: str = None
     area: str = None
 
+
 class RegistrarReporte(BaseModel):
-    id_reporte: int = None
     nom_reporte: str = None
     descripcion: str = None
-    fecha_reporte: str = None
-    evidencia: str = None
+    evidencia_1: str = None
+    evidencia_2: str = None
+    evidencia_3: str = None
     autor: int = None
     estatus: str = None
     urgencia: int = None
     privacidad: int = None
     tipo_reporte: str = None
+    responsable: int = None
+
+
+class EvidenciasAtendido(BaseModel):
+    evidencia_1: str = None
+    evidencia_2: str = None
+    evidencia_3: str = None
