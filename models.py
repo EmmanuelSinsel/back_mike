@@ -6,6 +6,7 @@ class RegistrarUsuario(BaseModel):
     tipo: str = None
     cargo: str = None
     area: str = None
+    correo: str = None
 
 
 class RegistrarReporte(BaseModel):

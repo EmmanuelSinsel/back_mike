@@ -19,6 +19,11 @@ reportes = APIRouter(
     tags=["Reportes"]
 )
 
+auth = APIRouter(
+    prefix="/auth",
+    tags=["Auth"]
+)
+
 
 # USUARIOS
 @usuarios.get("/login")
@@ -176,7 +181,48 @@ def evidencias_atendido(*,
         response.status_code = 501
     return res
 
+@auth.get("/verificar_cuenta")
+def verificar_cuenta(*,
+                        token: str,
+                        response: Response,
+                        service: Annotated[Repo, Depends()]):
+    status, res = service.verificarToken(token=token)
+    if status:
+        response.status_code = 200
+    else:
+        response.status_code = 501
+    return res
+
+@auth.get("/enviar_correo_password_reset")
+def enviar_correo_password_reset(*,
+                     email:str,
+                     id_usuario: int,
+                     response: Response,
+                     service: Annotated[Repo, Depends()]):
+    status, res = service.enviarCorreoPasswordReset(email=email,
+                                                    id_usuario=id_usuario)
+    if status:
+        response.status_code = 200
+    else:
+        response.status_code = 501
+    return res
+
+@auth.get("/password_reset")
+def password_reset(*,
+                     token:str,
+                     new_password: str,
+                     response: Response,
+                     service: Annotated[Repo, Depends()]):
+    status, res = service.passwordReset(token=token,
+                                        new_password=new_password)
+    if status:
+        response.status_code = 200
+    else:
+        response.status_code = 501
+    return res
+
 
 app.include_router(usuarios)
 app.include_router(reportes)
+app.include_router(auth)
 

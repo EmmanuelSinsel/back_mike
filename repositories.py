@@ -11,9 +11,19 @@ from models import *
 
 from dtos import *
 
+import smtplib
+from email.mime.text import MIMEText
+import string
+from datetime import date, timedelta, datetime
+from dateutil.parser import parse
+
+import random
+
 
 class Repo:
     db = None
+    characters = string.ascii_letters + string.digits
+    dominio = "reportesuasfim.ddns.net"
 
     def __init__(self):
         db_obj = Database()
@@ -39,13 +49,17 @@ class Repo:
             nomUser=data.usuario,
             passwd=data.password,
             cargo=data.cargo,
-            area=data.area
+            area=data.area,
+            correo=data.correo
         )
         try:
             get_user = self.db.query(Usuario).filter(Usuario.nomUser == data.usuario).order_by(Usuario.ID_user).first()
             if not get_user:
                 self.db.add(user)
+                self.db.flush()
                 self.db.commit()
+                self.db.refresh(user)
+                self.sendEmailVerification(id_usuario=user.ID_user, email=user.correo)
                 return True, {"status": 1, "detail": "Succesful Insert"}
             else:
                 return False, {"status": 0, "detail": "Usuario ya Existe"}
@@ -353,3 +367,134 @@ class Repo:
         except Exception as err:
             print(err)
             return False, {"status": 0, "detail": err}
+
+    #  EMAILS
+
+    def sendEmailVerification(self,
+                                    id_usuario: int,
+                                    email: str):
+        sender = emailSender(sender="therealchalinosanchez@gmail.com", password="mlta vekc irlj exls")
+        code = ""
+        while True:
+            p1 = ''.join(random.choice(self.characters) for i in range(3))
+            p2 = ''.join(random.choice(self.characters) for i in range(3))
+            p3 = ''.join(random.choice(self.characters) for i in range(3))
+            code = p1 + "-" + p2 + "-" + p3
+            print(code)
+            get_tokens = self.db.query(Tokens).filter(Tokens.token == code).filter(Tokens.token_type == "reg").count()
+            if get_tokens == 0:
+                break
+
+        expiration_date = datetime.datetime.now() + timedelta(minutes=30)
+
+        token = Tokens(
+            id_usuario = id_usuario,
+            token = code,
+            token_type = "reg",
+            expiration = expiration_date,
+            expirated = False
+        )
+        self.db.add(token)
+        self.db.commit()
+        message = ("Bienvenido a la plataforma de reportes de la Facultad de Ingenieria Mochis, para activar tu cuenta "
+                   "es necesario activarla con el siguiente codigo: "+code+" o ingresando al siguiente link "
+                                                                           "http://"+self.dominio+"/activar?token="+code)
+        sender.sendEmail(subject="VERIFICACION DE CORREO",
+                         recipients=email,
+                         message=message,
+                         code=code)
+
+    def verificarToken(self, token: str):
+        try:
+            token_data = self.db.query(Tokens).filter(Tokens.token == token).filter(Tokens.token_type=="reg").first()
+            expiration_date = parse(str(token_data.expiration))
+            today = parse(str(datetime.today()))
+            if token_data.expirated == False:
+                if today < expiration_date:
+                    token_data.expirated = True
+                    self.db.commit()
+                    return True, {"status": 1, "detail": "Activado"}
+                else:
+                    return True, {"status": 0, "detail": "Codigo vencido"}
+            else:
+                return True, {"status": 2, "detail": "Codigo ya activado"}
+        except Exception as err:
+            print(err)
+            return False, {"status": 0, "detail": err}
+
+    def enviarCorreoPasswordReset(self,
+                                  email: str,
+                                  id_usuario: int):
+        sender = emailSender(sender="therealchalinosanchez@gmail.com", password="mlta vekc irlj exls")
+        code = ""
+        while True:
+            p1 = ''.join(random.choice(self.characters) for i in range(3))
+            p2 = ''.join(random.choice(self.characters) for i in range(3))
+            p3 = ''.join(random.choice(self.characters) for i in range(3))
+            code = p1 + "-" + p2 + "-" + p3
+            print(code)
+            get_tokens = self.db.query(Tokens).filter(Tokens.token == code).filter(Tokens.token_type == "pwr").count()
+            if get_tokens == 0:
+                break
+
+        expiration_date = datetime.datetime.now() + timedelta(minutes=30)
+
+        token = Tokens(
+            id_usuario=id_usuario,
+            token=code,
+            token_type="pwr",
+            expiration=expiration_date,
+            expirated=False
+        )
+        try:
+            self.db.add(token)
+            self.db.commit()
+            message = ("Para reestablecer tu contraseña debes introducir el siguiente codigo: " + code +
+                       " o ingresando al siguiente link http://" + self.dominio + "/recuperacion?token=" + code)
+            sender.sendEmail(subject="RECUPERACION DE CONTRASEÑA",
+                             recipients=email,
+                             message=message,
+                             code=code)
+            return True, {"status": 1, "detail": "Codigo enviado"}
+        except Exception as err:
+            print(err)
+            return False, {"status": 0, "detail": err}
+
+    def passwordReset(self,
+                      token: str,
+                      new_password: str):
+        try:
+            token_data = self.db.query(Tokens).filter(Tokens.token == token).filter(Tokens.token_type=="[pwr]").first()
+            expiration_date = parse(str(token_data.expiration))
+            today = parse(str(datetime.today()))
+            if token_data.expirated == False:
+                if today < expiration_date:
+                    token_data.expirated = True
+                    user_data = self.db.query(Usuario).filter(Usuario.ID_user == token_data.id_usuario).first()
+                    user_data.passwd = new_password
+                    self.db.commit()
+                    return True, {"status": 1, "detail": "Activado"}
+                else:
+                    return True, {"status": 0, "detail": "Codigo vencido"}
+            else:
+                return True, {"status": 2, "detail": "Codigo ya activado"}
+        except Exception as err:
+            print(err)
+            return False, {"status": 0, "detail": err}
+class emailSender:
+    sender = ""
+    password = ""
+
+    def __init__(self, sender, password):
+        self.sender = sender
+        self.password = password
+
+    def sendEmail(self, subject, recipients, message, code):
+        msg = MIMEText(message, 'plain')
+        msg['Subject'] = subject
+        msg['From'] = self.sender
+        msg['To'] = ', '.join(recipients)
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp_server:
+            smtp_server.login(self.sender, self.password)
+            smtp_server.sendmail(self.sender, recipients, msg.as_string())
+        print("Message sent!")

@@ -45,3 +45,15 @@ class Usuario(Base):
     passwd: Mapped[str] = mapped_column(String(30), nullable=False)
     cargo: Mapped[str] = mapped_column(String(30), nullable=False)
     area: Mapped[str] = mapped_column(String(30), nullable=False)
+    correo: Mapped[str] = mapped_column(String(100), nullable=False)
+
+
+class Tokens(Base):
+    __tablename__ = "tokens"
+
+    id_tokens: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    id_usuario: Mapped[int] = mapped_column(nullable=False)
+    token: Mapped[str] = mapped_column(String(45), nullable=False)
+    token_type: Mapped[str] = mapped_column(String(3), nullable=False)
+    expiration = Column(Date)
+    expirated: Mapped[int] = mapped_column(nullable=False)
