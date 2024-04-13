@@ -33,7 +33,7 @@ class Reportes(Base):
     urgencia: Mapped[int] = mapped_column(nullable=False)
     privacidad: Mapped[int] = mapped_column(nullable=False)
     tipo_report: Mapped[str] = mapped_column(String(30), nullable=False)
-    responsable: Mapped[int] = mapped_column(nullable=True)
+    responsable: Mapped[int] = mapped_column(nullable=False)
     evidencia_atendido = Column(LargeBinary)
 
 class Usuario(Base):
@@ -46,6 +46,7 @@ class Usuario(Base):
     cargo: Mapped[str] = mapped_column(String(30), nullable=False)
     area: Mapped[str] = mapped_column(String(30), nullable=False)
     correo: Mapped[str] = mapped_column(String(100), nullable=False)
+    estatus: Mapped[int] = mapped_column(nullable=False)
 
 
 class Tokens(Base):
@@ -55,5 +56,22 @@ class Tokens(Base):
     id_usuario: Mapped[int] = mapped_column(nullable=False)
     token: Mapped[str] = mapped_column(String(45), nullable=False)
     token_type: Mapped[str] = mapped_column(String(3), nullable=False)
+    expiration = Column(Date)
+    expirated: Mapped[int] = mapped_column(nullable=False)
+
+
+class Caterogoria(Base):
+    __tablename__ = "categorias"
+
+    id_categoria: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    nombre_categoria: Mapped[str] = mapped_column(String(50), nullable=False)
+
+
+class SessionTokens(Base):
+    __tablename__ = "session_tokens"
+
+    id_tokens: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    id_usuario: Mapped[int] = mapped_column(nullable=False)
+    token: Mapped[str] = mapped_column(String(45), nullable=False)
     expiration = Column(Date)
     expirated: Mapped[int] = mapped_column(nullable=False)

@@ -34,11 +34,31 @@ class Repo:
             user = self.db.query(Usuario).filter(Usuario.nomUser == usuario).order_by(Usuario.ID_user).first()
             if user:
                 if user.passwd == password:
-                    return True, {"status": 1, "detail": "sesion iniciada"}
+                    code = ""
+                    while True:
+                        p1 = ''.join(random.choice(self.characters) for i in range(4))
+                        p2 = ''.join(random.choice(self.characters) for i in range(4))
+                        p3 = ''.join(random.choice(self.characters) for i in range(4))
+                        p4 = ''.join(random.choice(self.characters) for i in range(4))
+                        code = p1 + p2 + p3 + p4
+                        print(code)
+                        get_tokens = self.db.query(SessionTokens).filter(SessionTokens.token == code).count()
+                        if get_tokens == 0:
+                            break
+                    expiration_date = datetime.datetime.now() + timedelta(days=30)
+                    token = SessionTokens(
+                        id_usuario=user.ID_user,
+                        token=code,
+                        expiration=expiration_date,
+                        expirated=False
+                    )
+                    self.db.add(token)
+                    self.db.commit()
+                    return True, {"status": 1, "token": code, "detail": "sesion iniciada"}
                 else:
-                    return False, {"status": 0, "detail": "contraseña incorrecta"}
+                    return False, {"status": 0, "token": None, "detail": "contraseña incorrecta"}
             else:
-                return False, {"status": 0, "detail": "usuario inexistente"}
+                return False, {"status": 0, "token": None, "detail": "usuario inexistente"}
         except Exception as err:
             print(err)
             return False, {"detail": err}
@@ -108,23 +128,23 @@ class Repo:
         try:
             if urgencia:
                 if estatus == None and tipo_report == None:
-                    query_full = (self.db.query(Reportes).filter(Reportes.autor==id_usuario)
+                    query_full = (self.db.query(Reportes).filter(Reportes.autor == id_usuario)
                                   .order_by(Reportes.urgencia.desc()).all())
                 else:
                     if type(estatus) == str and type(tipo_report) == str:
                         query_full = (self.db.query(Reportes).filter(Reportes.autor == id_usuario)
-                                         .filter(Reportes.tipo_report == tipo_report)
-                                         .filter(Reportes.estatus == estatus).order_by(
+                                      .filter(Reportes.tipo_report == tipo_report)
+                                      .filter(Reportes.estatus == estatus).order_by(
                             Reportes.urgencia.desc()).all())
                     else:
                         if type(estatus) == str:
-                            query_estatus = (self.db.query(Reportes).filter(Reportes.autor==id_usuario)
+                            query_estatus = (self.db.query(Reportes).filter(Reportes.autor == id_usuario)
                                              .filter(Reportes.estatus == estatus).order_by(
-                                             Reportes.urgencia.desc()).all())
+                                Reportes.urgencia.desc()).all())
                         if type(tipo_report) == str:
-                            query_tipo = (self.db.query(Reportes).filter(Reportes.autor==id_usuario)
-                                             .filter(Reportes.tipo_report == tipo_report).order_by(
-                                            Reportes.urgencia.desc()).all())
+                            query_tipo = (self.db.query(Reportes).filter(Reportes.autor == id_usuario)
+                                          .filter(Reportes.tipo_report == tipo_report).order_by(
+                                Reportes.urgencia.desc()).all())
             else:
                 if type(estatus) == str and type(tipo_report) == str:
                     query_full = (self.db.query(Reportes).filter(Reportes.autor == id_usuario)
@@ -148,29 +168,29 @@ class Repo:
                 for i in query_full:
                     autor = self.db.query(Usuario).filter(Usuario.ID_user == i.autor).order_by(Usuario.ID_user).first()
                     row = {
-                        "ID_report":i.ID_report,
-                        "nomReport":i.nomReport,
-                        "fecha_report":i.fecha_report,
-                        "estatus":i.estatus,
-                        "autor":{
-                            "ID_user":autor.ID_user,
-                            "nomUser":autor.nomUser
+                        "ID_report": i.ID_report,
+                        "nomReport": i.nomReport,
+                        "fecha_report": i.fecha_report,
+                        "estatus": i.estatus,
+                        "autor": {
+                            "ID_user": autor.ID_user,
+                            "nomUser": autor.nomUser
                         },
-                        "tipo_report":i.tipo_report,
-                        "urgencia":i.urgencia
+                        "tipo_report": i.tipo_report,
+                        "urgencia": i.urgencia
                     }
-                    data[cont]=row
+                    data[cont] = row
                     cont += 1
                 return True, data
             else:
                 return True, {}
         except Exception as err:
-            #print(err)
+            # print(err)
             return False, {"status": 0, "detail": err}
 
     def eliminar_reporte(self, id_reporte: int):
         try:
-            reporte = self.db.query(Reportes).filter(Reportes.ID_report==id_reporte).first()
+            reporte = self.db.query(Reportes).filter(Reportes.ID_report == id_reporte).first()
             if reporte:
                 self.db.delete(reporte)
                 self.db.commit()
@@ -183,7 +203,7 @@ class Repo:
 
     def repostear_reporte(self, id_reporte: int):
         try:
-            reporte = self.db.query(Reportes).filter(Reportes.ID_report==id_reporte).first()
+            reporte = self.db.query(Reportes).filter(Reportes.ID_report == id_reporte).first()
             if reporte:
                 reporte.urgencia += 1
                 self.db.commit()
@@ -278,19 +298,20 @@ class Repo:
             reporte = self.db.query(Reportes).filter(Reportes.ID_report == id_reporte).order_by(
                 Reportes.ID_report).first()
             autor = self.db.query(Usuario).filter(Usuario.ID_user == reporte.autor).order_by(Usuario.ID_user).first()
-            responsable = self.db.query(Usuario).filter(Usuario.ID_user == reporte.responsable).order_by(Usuario.ID_user).first()
+            responsable = self.db.query(Usuario).filter(Usuario.ID_user == reporte.responsable).order_by(
+                Usuario.ID_user).first()
             evidencia = json.loads(base64.b64decode(reporte.evidencia).decode("UTF-8"))
             data = {
                 "ID_report": reporte.ID_report,
                 "nomReporte": reporte.nomReport,
                 "descripcion": reporte.descripcion,
                 "fecha_report": reporte.fecha_report,
-                "evidencia":{
+                "evidencia": {
                     "evidencia_1": evidencia["evidencia_1"],
                     "evidencia_2": evidencia["evidencia_2"],
                     "evidencia_3": evidencia["evidencia_3"],
                 },
-                "evidencia_atendido":{},
+                "evidencia_atendido": {},
                 "autor": {
                     "ID_user": autor.ID_user,
                     "nomUser": autor.nomUser,
@@ -307,13 +328,13 @@ class Repo:
             }
             if reporte.evidencia_atendido:
                 evidencia_atendido = json.loads(base64.b64decode(reporte.evidencia_atendido).decode("UTF-8"))
-                data["evidencia_atendido"]={
+                data["evidencia_atendido"] = {
                     "evidencia_1": evidencia_atendido["evidencia_1"],
                     "evidencia_2": evidencia_atendido["evidencia_2"],
                     "evidencia_3": evidencia_atendido["evidencia_3"],
                 }
             else:
-                data["evidencia_atendido"]="null"
+                data["evidencia_atendido"] = "null"
             return True, data
         except Exception as err:
             print(err)
@@ -323,7 +344,7 @@ class Repo:
                           id_reporte: int,
                           estado: str):
         try:
-            reporte = self.db.query(Reportes).filter(Reportes.ID_report==id_reporte).first()
+            reporte = self.db.query(Reportes).filter(Reportes.ID_report == id_reporte).first()
             if reporte:
                 reporte.estado = estado
                 self.db.commit()
@@ -338,7 +359,7 @@ class Repo:
                             id_reporte: int,
                             data: EvidenciasAtendido):
         try:
-            reporte = self.db.query(Reportes).filter(Reportes.ID_report==id_reporte).first()
+            reporte = self.db.query(Reportes).filter(Reportes.ID_report == id_reporte).first()
             if reporte:
                 evidencia = {
                     "evidencia_1": data.evidencia_1,
@@ -357,7 +378,7 @@ class Repo:
                   id_reporte: int,
                   responsable: int):
         try:
-            reporte = self.db.query(Reportes).filter(Reportes.ID_report==id_reporte).first()
+            reporte = self.db.query(Reportes).filter(Reportes.ID_report == id_reporte).first()
             if reporte:
                 reporte.responsable = responsable
                 self.db.commit()
@@ -371,8 +392,8 @@ class Repo:
     #  EMAILS
 
     def sendEmailVerification(self,
-                                    id_usuario: int,
-                                    email: str):
+                              id_usuario: int,
+                              email: str):
         sender = emailSender(sender="therealchalinosanchez@gmail.com", password="mlta vekc irlj exls")
         code = ""
         while True:
@@ -388,17 +409,17 @@ class Repo:
         expiration_date = datetime.datetime.now() + timedelta(minutes=30)
 
         token = Tokens(
-            id_usuario = id_usuario,
-            token = code,
-            token_type = "reg",
-            expiration = expiration_date,
-            expirated = False
+            id_usuario=id_usuario,
+            token=code,
+            token_type="reg",
+            expiration=expiration_date,
+            expirated=False
         )
         self.db.add(token)
         self.db.commit()
         message = ("Bienvenido a la plataforma de reportes de la Facultad de Ingenieria Mochis, para activar tu cuenta "
-                   "es necesario activarla con el siguiente codigo: "+code+" o ingresando al siguiente link "
-                                                                           "http://"+self.dominio+"/activar?token="+code)
+                   "es necesario activarla con el siguiente codigo: " + code + " o ingresando al siguiente link "
+                                                                               "http://" + self.dominio + "/activar?token=" + code)
         sender.sendEmail(subject="VERIFICACION DE CORREO",
                          recipients=email,
                          message=message,
@@ -406,12 +427,14 @@ class Repo:
 
     def verificarToken(self, token: str):
         try:
-            token_data = self.db.query(Tokens).filter(Tokens.token == token).filter(Tokens.token_type=="reg").first()
+            token_data = self.db.query(Tokens).filter(Tokens.token == token).filter(Tokens.token_type == "reg").first()
             expiration_date = parse(str(token_data.expiration))
             today = parse(str(datetime.today()))
             if token_data.expirated == False:
                 if today < expiration_date:
+                    usuario = self.db.query(Usuario).filter(Usuario.ID_user == token_data.id_usuario)
                     token_data.expirated = True
+                    usuario.estatus = 1
                     self.db.commit()
                     return True, {"status": 1, "detail": "Activado"}
                 else:
@@ -464,7 +487,8 @@ class Repo:
                       token: str,
                       new_password: str):
         try:
-            token_data = self.db.query(Tokens).filter(Tokens.token == token).filter(Tokens.token_type=="[pwr]").first()
+            token_data = self.db.query(Tokens).filter(Tokens.token == token).filter(
+                Tokens.token_type == "[pwr]").first()
             expiration_date = parse(str(token_data.expiration))
             today = parse(str(datetime.today()))
             if token_data.expirated == False:
@@ -478,6 +502,28 @@ class Repo:
                     return True, {"status": 0, "detail": "Codigo vencido"}
             else:
                 return True, {"status": 2, "detail": "Codigo ya activado"}
+        except Exception as err:
+            print(err)
+            return False, {"status": 0, "detail": err}
+
+    def authToken(self, token):
+        try:
+            token = self.db.query(SessionTokens).filter(SessionTokens.token == token).first()
+            expiration_date = parse(str(token.expiration))
+            today = parse(str(datetime.today()))
+            if token.expirated == 0:
+                if today < expiration_date:
+                    new_expiration_date = datetime.datetime.now() + timedelta(days=30)
+                    token.expiration = new_expiration_date
+                    self.db.commit()
+                    return False, {"status": 1, "detail": "Token valido"}
+                else:
+                    token.expirated = 1
+                    self.db.commit()
+                    return False, {"status": 0, "detail": "Token expirado"}
+            else:
+                return False, {"status": 2, "detail": "Token expirado"}
+            pass
         except Exception as err:
             print(err)
             return False, {"status": 0, "detail": err}

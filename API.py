@@ -1,13 +1,59 @@
+import datetime
+
 from fastapi import APIRouter, FastAPI, Depends, Response
 from typing import Annotated
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-
+from fastapi import Request
 from models import *
 
 from repositories import *
 
 app = FastAPI()
+
+# @app.middleware("http")
+# async def add_process_time_header(request: Request, call_next):
+#     headers = dict(request.scope['headers'])
+#     base = str(request.base_url)
+#     url = str(request.url)
+#     excluded_urls = ["api/login",
+#                      "api/password_recover",
+#                      "api/password_reset",
+#                      "api/verify_email",
+#                      "api/send_email_verification",
+#                      "api/password_token_verify",
+#                      "api/authenticate"]
+#     if b'access-control-request-headers' in headers:
+#         response = await call_next(request)
+#         return response
+#     if base in url:
+#         url = url.replace(base, '')
+#     if url == "docs" or url == "openapi.json":
+#         response = await call_next(request)
+#         return response
+#     elif url in excluded_urls:
+#         response = await call_next(request)
+#         return response
+#     else:
+#         try:
+#             token = request.headers.get('token')
+#             auth = Repo()
+#             if url == "login":
+#                 response = await call_next(request)
+#                 headers = {"Access-Control-Allow-Origin": "*"}
+#                 return JSONResponse(content=response, headers=headers)
+#             elif token == "":
+#                 response = {"status": "401", "msg": "Not logged"}
+#                 return JSONResponse(content=response)
+#             elif auth.verificarToken(token):
+#                 response = await call_next(request)
+#                 headers = {"Access-Control-Allow-Origin": "*"}
+#                 return JSONResponse(content=response, headers=headers)
+#             else:
+#                 response = {"status": "401", "msg": "Invalid token"}
+#                 return JSONResponse(content=response)
+#         except:
+#             return response
 
 usuarios = APIRouter(
     prefix="/usuarios",
