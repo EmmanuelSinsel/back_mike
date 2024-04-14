@@ -34,31 +34,11 @@ class Repo:
             user = self.db.query(Usuario).filter(Usuario.nomUser == usuario).order_by(Usuario.ID_user).first()
             if user:
                 if user.passwd == password:
-                    code = ""
-                    while True:
-                        p1 = ''.join(random.choice(self.characters) for i in range(4))
-                        p2 = ''.join(random.choice(self.characters) for i in range(4))
-                        p3 = ''.join(random.choice(self.characters) for i in range(4))
-                        p4 = ''.join(random.choice(self.characters) for i in range(4))
-                        code = p1 + p2 + p3 + p4
-                        print(code)
-                        get_tokens = self.db.query(SessionTokens).filter(SessionTokens.token == code).count()
-                        if get_tokens == 0:
-                            break
-                    expiration_date = datetime.datetime.now() + timedelta(days=30)
-                    token = SessionTokens(
-                        id_usuario=user.ID_user,
-                        token=code,
-                        expiration=expiration_date,
-                        expirated=False
-                    )
-                    self.db.add(token)
-                    self.db.commit()
-                    return True, {"status": 1, "token": code, "detail": "sesion iniciada"}
+                    return True, {"status": 1, "detail": "sesion iniciada"}
                 else:
-                    return False, {"status": 0, "token": None, "detail": "contraseña incorrecta"}
+                    return False, {"status": 0, "detail": "contraseña incorrecta"}
             else:
-                return False, {"status": 0, "token": None, "detail": "usuario inexistente"}
+                return False, {"status": 0, "detail": "usuario inexistente"}
         except Exception as err:
             print(err)
             return False, {"detail": err}
@@ -88,7 +68,7 @@ class Repo:
             return False, {"status": 0, "detail": err}
 
     def generar_reporte(self, data: RegistrarReporte):
-        fecha_actual = datetime.date.today()
+        fecha_actual = date.today()
         print(fecha_actual)
         evidencia = {
             "evidencia_1": data.evidencia_1,
@@ -185,7 +165,7 @@ class Repo:
             else:
                 return True, {}
         except Exception as err:
-            # print(err)
+            print(err)
             return False, {"status": 0, "detail": err}
 
     def eliminar_reporte(self, id_reporte: int):
@@ -406,7 +386,7 @@ class Repo:
             if get_tokens == 0:
                 break
 
-        expiration_date = datetime.datetime.now() + timedelta(minutes=30)
+        expiration_date = datetime.now() + timedelta(minutes=30)
 
         token = Tokens(
             id_usuario=id_usuario,
@@ -460,7 +440,7 @@ class Repo:
             if get_tokens == 0:
                 break
 
-        expiration_date = datetime.datetime.now() + timedelta(minutes=30)
+        expiration_date = datetime.now() + timedelta(minutes=30)
 
         token = Tokens(
             id_usuario=id_usuario,
@@ -513,7 +493,7 @@ class Repo:
             today = parse(str(datetime.today()))
             if token.expirated == 0:
                 if today < expiration_date:
-                    new_expiration_date = datetime.datetime.now() + timedelta(days=30)
+                    new_expiration_date = datetime.now() + timedelta(days=30)
                     token.expiration = new_expiration_date
                     self.db.commit()
                     return False, {"status": 1, "detail": "Token valido"}

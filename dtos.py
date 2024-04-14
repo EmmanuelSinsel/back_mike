@@ -67,11 +67,3 @@ class Caterogoria(Base):
     nombre_categoria: Mapped[str] = mapped_column(String(50), nullable=False)
 
 
-class SessionTokens(Base):
-    __tablename__ = "session_tokens"
-
-    id_tokens: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
-    id_usuario: Mapped[int] = mapped_column(nullable=False)
-    token: Mapped[str] = mapped_column(String(45), nullable=False)
-    expiration = Column(Date)
-    expirated: Mapped[int] = mapped_column(nullable=False)
