@@ -42,6 +42,7 @@ class Usuario(Base):
     ID_user: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     tipoUser: Mapped[str] = mapped_column(String(45), nullable=False)
     nomUser: Mapped[str] = mapped_column(String(45), nullable=False)
+    noCuenta: Mapped[str] = mapped_column(String(30), nullable=False)
     passwd: Mapped[str] = mapped_column(String(30), nullable=False)
     cargo: Mapped[str] = mapped_column(String(30), nullable=False)
     area: Mapped[str] = mapped_column(String(30), nullable=False)

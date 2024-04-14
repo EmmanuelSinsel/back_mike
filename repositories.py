@@ -47,6 +47,7 @@ class Repo:
         user = Usuario(
             tipoUser=data.tipo,
             nomUser=data.usuario,
+            noCuenta=data.no_cuenta,
             passwd=data.password,
             cargo=data.cargo,
             area=data.area,
@@ -67,6 +68,37 @@ class Repo:
             print(err)
             return False, {"status": 0, "detail": err}
 
+    def detalle_usuario(self, id_usuario: int):
+        try:
+            usuario = self.db.query(Usuario).filter(Usuario.ID_user == id_usuario).first()
+            data = {
+                "ID_user": usuario.ID_user,
+                "tipoUser": usuario.tipoUser,
+                "nomUser": usuario.nomUser,
+                "noCuenta": usuario.noCuenta,
+                "passwd": usuario.passwd,
+                "cargo": usuario.cargo,
+                "area": usuario.area,
+                "correo": usuario.correo,
+                "estatus": usuario.estatus
+            }
+            if usuario.tipoUser == 'Estudiante':
+                reportes = self.db.query(Reportes).filter(Reportes.autor == id_usuario).all()
+                if reportes:
+                    temp = []
+                    for i in reportes:
+                        temp.append({
+                            "ID_report": i.ID_report,
+                            "nomReport": i.nomReport,
+                            "fecha_report": i.fecha_report,
+                            "estatus": i.estatus,
+                            "urgencia": i. urgencia
+                        })
+                    data['reportes'] = temp
+            return True, data
+        except Exception as err:
+            print(err)
+            return False, {"status": 0, "detail": err}
     def generar_reporte(self, data: RegistrarReporte):
         fecha_actual = date.today()
         print(fecha_actual)
@@ -154,7 +186,8 @@ class Repo:
                         "estatus": i.estatus,
                         "autor": {
                             "ID_user": autor.ID_user,
-                            "nomUser": autor.nomUser
+                            "nomUser": autor.nomUser,
+                            "noCuenta": autor.noCuenta
                         },
                         "tipo_report": i.tipo_report,
                         "urgencia": i.urgencia
@@ -258,7 +291,8 @@ class Repo:
                         "estatus": i.estatus,
                         "autor": {
                             "ID_user": autor.ID_user,
-                            "nomUser": autor.nomUser
+                            "nomUser": autor.nomUser,
+                            "noCuenta": autor.noCuenta
                         },
                         "tipo_report": i.tipo_report,
                         "urgencia": i.urgencia

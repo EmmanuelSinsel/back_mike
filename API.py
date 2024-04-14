@@ -99,6 +99,18 @@ def registrar(*,
         response.status_code = 501
     return res
 
+@usuarios.get("/detalle_usuario")
+def generar_reporte(*,
+                    id_usuario: int,
+                    response: Response,
+                    service: Annotated[Repo, Depends()]):
+    status, res = service.detalle_usuario(id_usuario=id_usuario)
+    if status:
+        response.status_code = 201
+    else:
+        response.status_code = 501
+    return res
+
 # REPORTES
 @reportes.post("/registrar_reporte")
 def generar_reporte(*,
