@@ -80,7 +80,8 @@ class Repo:
                 "cargo": usuario.cargo,
                 "area": usuario.area,
                 "correo": usuario.correo,
-                "estatus": usuario.estatus
+                "estatus": usuario.estatus,
+                "reportes": None
             }
             if usuario.tipoUser == 'Estudiante':
                 reportes = self.db.query(Reportes).filter(Reportes.autor == id_usuario).all()
