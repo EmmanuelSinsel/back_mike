@@ -14,7 +14,7 @@ class Database:
     params = ("mysql+mysqlconnector://"+username+":"+password+
               "@"+server+"/"+database)
 
-    engine = create_engine(params, echo=True)
+    engine = create_engine(params, echo=True, pool_size=10, max_overflow=20)
 
     def connection(self):
         db = sessionmaker(bind=self.engine)

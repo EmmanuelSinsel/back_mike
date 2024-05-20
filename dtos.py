@@ -25,7 +25,7 @@ class Reportes(Base):
 
     ID_report: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     nomReport: Mapped[str] = mapped_column(String(45), nullable=False)
-    descripcion: Mapped[str] = mapped_column(String(45), nullable=False)
+    descripcion: Mapped[str] = mapped_column(String(500), nullable=False)
     fecha_report = Column(Date)
     evidencia = Column(LargeBinary)
     autor: Mapped[int] = mapped_column(nullable=False)
@@ -41,11 +41,11 @@ class Usuario(Base):
 
     ID_user: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     tipoUser: Mapped[str] = mapped_column(String(45), nullable=False)
-    nomUser: Mapped[str] = mapped_column(String(45), nullable=False)
+    nomUser: Mapped[str] = mapped_column(String(100), nullable=False)
     noCuenta: Mapped[str] = mapped_column(String(30), nullable=False)
     passwd: Mapped[str] = mapped_column(String(30), nullable=False)
     cargo: Mapped[str] = mapped_column(String(30), nullable=False)
-    area: Mapped[str] = mapped_column(String(30), nullable=False)
+    area: Mapped[str] = mapped_column(String(300), nullable=False)
     correo: Mapped[str] = mapped_column(String(100), nullable=False)
     estatus: Mapped[int] = mapped_column(nullable=False)
 
@@ -61,10 +61,17 @@ class Tokens(Base):
     expirated: Mapped[int] = mapped_column(nullable=False)
 
 
-class Caterogoria(Base):
+class Categoria(Base):
     __tablename__ = "categorias"
 
     id_categoria: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
-    nombre_categoria: Mapped[str] = mapped_column(String(50), nullable=False)
+    nombre_categoria: Mapped[str] = mapped_column(String(500), nullable=False)
+
+
+class Area(Base):
+    __tablename__ = "areas"
+
+    id_area: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    nombre_area: Mapped[str] = mapped_column(String(500), nullable=False)
 
 

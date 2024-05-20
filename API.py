@@ -9,51 +9,23 @@ from models import *
 
 from repositories import *
 
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+# lo siguiente solo se va a poner para cuando este hosteado en el OracleCloud
+# app = FastAPI(root_path="/backend-fim")
+
 app = FastAPI()
 
-# @app.middleware("http")
-# async def add_process_time_header(request: Request, call_next):
-#     headers = dict(request.scope['headers'])
-#     base = str(request.base_url)
-#     url = str(request.url)
-#     excluded_urls = ["api/login",
-#                      "api/password_recover",
-#                      "api/password_reset",
-#                      "api/verify_email",
-#                      "api/send_email_verification",
-#                      "api/password_token_verify",
-#                      "api/authenticate"]
-#     if b'access-control-request-headers' in headers:
-#         response = await call_next(request)
-#         return response
-#     if base in url:
-#         url = url.replace(base, '')
-#     if url == "docs" or url == "openapi.json":
-#         response = await call_next(request)
-#         return response
-#     elif url in excluded_urls:
-#         response = await call_next(request)
-#         return response
-#     else:
-#         try:
-#             token = request.headers.get('token')
-#             auth = Repo()
-#             if url == "login":
-#                 response = await call_next(request)
-#                 headers = {"Access-Control-Allow-Origin": "*"}
-#                 return JSONResponse(content=response, headers=headers)
-#             elif token == "":
-#                 response = {"status": "401", "msg": "Not logged"}
-#                 return JSONResponse(content=response)
-#             elif auth.verificarToken(token):
-#                 response = await call_next(request)
-#                 headers = {"Access-Control-Allow-Origin": "*"}
-#                 return JSONResponse(content=response, headers=headers)
-#             else:
-#                 response = {"status": "401", "msg": "Invalid token"}
-#                 return JSONResponse(content=response)
-#         except:
-#             return response
+# Configuración de CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 usuarios = APIRouter(
     prefix="/usuarios",
@@ -63,6 +35,16 @@ usuarios = APIRouter(
 reportes = APIRouter(
     prefix="/reportes",
     tags=["Reportes"]
+)
+
+areas = APIRouter(
+    prefix="/areas",
+    tags=["Areas"]
+)
+
+categorias = APIRouter(
+    prefix="/categorias",
+    tags=["Categorias"]
 )
 
 auth = APIRouter(
@@ -78,7 +60,7 @@ def login(*,
           password: str,
           response: Response,
           service: Annotated[Repo, Depends()]):
-    status, res = service.login(usuario=usuario,
+    status, res = service.login(no_cuenta=usuario,
                                 password=password)
     if status:
         response.status_code = 200
@@ -99,6 +81,22 @@ def registrar(*,
         response.status_code = 501
     return res
 
+
+@usuarios.post("/reasignar_area")
+def reasignar(*,
+              id_usuario: int,
+              area: str,
+              tipoUser: str,
+              response: Response,
+              service: Annotated[Repo, Depends()]):
+    status, res = service.reasignar_area(id_usuario=id_usuario, area=area, tipoUser=tipoUser)
+    if status:
+        response.status_code = 201
+    else:
+        response.status_code = 501
+    return res
+
+
 @usuarios.get("/detalle_usuario")
 def generar_reporte(*,
                     id_usuario: int,
@@ -110,6 +108,7 @@ def generar_reporte(*,
     else:
         response.status_code = 501
     return res
+
 
 # REPORTES
 @reportes.post("/registrar_reporte")
@@ -130,13 +129,32 @@ def ver_historial(*,
                   id_usuario: int,
                   estatus: str = None,
                   tipo_report: str = None,
-                  urgencia: bool = False,
+                  urgencia: bool = True,
                   response: Response,
                   service: Annotated[Repo, Depends()]):
     status, res = service.ver_historial(id_usuario=id_usuario,
                                         estatus=estatus,
                                         tipo_report=tipo_report,
                                         urgencia=urgencia)
+    if status:
+        response.status_code = 200
+    else:
+        response.status_code = 501
+    return res
+
+
+@reportes.get("/historial_reportes_responsable")
+def ver_historial_responsable(*,
+                              id_usuario: int,
+                              estatus: str = None,
+                              tipo_report: str = None,
+                              urgencia: bool = True,
+                              response: Response,
+                              service: Annotated[Repo, Depends()]):
+    status, res = service.ver_historial_responsable(id_responsable=id_usuario,
+                                                    estatus=estatus,
+                                                    tipo_report=tipo_report,
+                                                    urgencia=urgencia)
     if status:
         response.status_code = 200
     else:
@@ -172,14 +190,16 @@ def repostear_reporte(*,
 
 @reportes.get("/lista_reportes")
 def ver_reportes(*,
-                 estatus: str = None,
+                 estatus: str = 'Pendiente',
                  tipo_report: str = None,
                  urgencia: bool = False,
+                 sin_asignar: bool = False,
                  response: Response,
                  service: Annotated[Repo, Depends()]):
     status, res = service.ver_reportes(estatus=estatus,
                                        tipo_report=tipo_report,
-                                       urgencia=urgencia)
+                                       urgencia=urgencia,
+                                       sin_asignar=sin_asignar)
     if status:
         response.status_code = 200
     else:
@@ -213,18 +233,34 @@ def actualizar_estado(*,
         response.status_code = 501
     return res
 
+
+# @reportes.patch("/reasignar_reporte")
+# def reasignar(*,
+#               id_reporte: int,
+#               area: str,
+#               response: Response,
+#               service: Annotated[Repo, Depends()]):
+#     status, res = service.reasignar(id_reporte=id_reporte, area=area)
+#     if status:
+#         response.status_code = 200
+#     else:
+#         response.status_code = 501
+#     return res
+
 @reportes.patch("/reasignar_reporte")
 def reasignar(*,
               id_reporte: int,
-              responsable: int,
+              area: str,
+              ID_user: int,
               response: Response,
               service: Annotated[Repo, Depends()]):
-    status, res = service.reasignar(id_reporte=id_reporte, responsable=responsable)
+    status, res = service.reasignar(id_reporte=id_reporte, area=area, ID_user=ID_user)
     if status:
         response.status_code = 200
     else:
         response.status_code = 501
     return res
+
 
 @reportes.put("/evidencias_atendido")
 def evidencias_atendido(*,
@@ -239,40 +275,186 @@ def evidencias_atendido(*,
         response.status_code = 501
     return res
 
-@auth.get("/verificar_cuenta")
-def verificar_cuenta(*,
-                        token: str,
-                        response: Response,
-                        service: Annotated[Repo, Depends()]):
-    status, res = service.verificarToken(token=token)
+
+@usuarios.get("/lista_usuarios")
+def lista_usuarios(*,
+                   response: Response,
+                   service: Annotated[Repo, Depends()]):
+    status, res = service.lista_usuarios()
     if status:
         response.status_code = 200
     else:
         response.status_code = 501
     return res
+
+
+@usuarios.get("/lista_usuarios_area")
+def lista_usuarios_area(*,
+                        area: str,
+                        response: Response,
+                        service: Annotated[Repo, Depends()]):
+    status, res = service.lista_usuarios_area(area=area)
+    service.db.close()
+    if status:
+        response.status_code = 200
+    else:
+        response.status_code = 501
+    return res
+
+
+@auth.get("/verificar_cuenta")
+def verificar_cuenta(*,
+                     token: str,
+                     response: Response,
+                     service: Annotated[Repo, Depends()]):
+    status, res = service.verificarToken(token=token)
+    service.db.close()
+    if status:
+        response.status_code = 200
+    else:
+        response.status_code = 501
+    return res
+
 
 @auth.get("/enviar_correo_password_reset")
 def enviar_correo_password_reset(*,
-                     email:str,
-                     id_usuario: int,
-                     response: Response,
-                     service: Annotated[Repo, Depends()]):
+                                 email: str,
+                                 id_usuario: int,
+                                 response: Response,
+                                 service: Annotated[Repo, Depends()]):
     status, res = service.enviarCorreoPasswordReset(email=email,
                                                     id_usuario=id_usuario)
+    service.db.close()
     if status:
         response.status_code = 200
     else:
         response.status_code = 501
     return res
 
+
 @auth.get("/password_reset")
 def password_reset(*,
-                     token:str,
-                     new_password: str,
-                     response: Response,
-                     service: Annotated[Repo, Depends()]):
+                   token: str,
+                   new_password: str,
+                   response: Response,
+                   service: Annotated[Repo, Depends()]):
     status, res = service.passwordReset(token=token,
                                         new_password=new_password)
+    service.db.close()
+    if status:
+        response.status_code = 200
+    else:
+        response.status_code = 501
+    return res
+
+
+@categorias.get("/lista_categorias")
+def lista_categorias(
+        response: Response,
+        service: Annotated[Repo, Depends()]):
+    status, res = service.lista_categorias()
+    service.db.close()
+    if status:
+        response.status_code = 200
+    else:
+        response.status_code = 501
+    return res
+
+
+@categorias.post("/registrar_categoria")
+def registrar_categoria(*,
+                        categoria: RegistrarCategoria,
+                        response: Response,
+                        service: Annotated[Repo, Depends()]):
+    status, res = service.registrar_categoria(categoria=categoria)
+    service.db.close()
+    if status:
+        response.status_code = 201
+    else:
+        response.status_code = 501
+    return res
+
+
+@categorias.delete("/eliminar_categoria")
+def eliminar_categoria(*,
+                       id_categoria: int,
+                       response: Response,
+                       service: Annotated[Repo, Depends()]):
+    status, res = service.eliminar_categoria(id_categoria=id_categoria)
+    service.db.close()
+    if status:
+        response.status_code = 200
+    else:
+        response.status_code = 501
+    return res
+
+
+@categorias.put("/actualizar_categoria")
+def actualizar_categoria(*,
+                         id_categoria: int,
+                         categoria: RegistrarCategoria,
+                         response: Response,
+                         service: Annotated[Repo, Depends()]):
+    status, res = service.actualizar_categoria(id_categoria=id_categoria,
+                                               categoria=categoria)
+    service.db.close()
+    if status:
+        response.status_code = 200
+    else:
+        response.status_code = 501
+    return res
+
+
+@areas.get("/lista_areas")
+def lista_areas(
+        response: Response,
+        service: Annotated[Repo, Depends()]):
+    status, res = service.lista_areas()
+    service.db.close()
+    if status:
+        response.status_code = 200
+    else:
+        response.status_code = 501
+    return res
+
+
+@areas.post("/registrar_area")
+def registrar_area(*,
+                   area: RegistrarArea,
+                   response: Response,
+                   service: Annotated[Repo, Depends()]):
+    status, res = service.registrar_area(area=area)
+    service.db.close()
+    if status:
+        response.status_code = 201
+    else:
+        response.status_code = 501
+    return res
+
+
+@areas.delete("/eliminar_area")
+def eliminar_area(*,
+                  id_area: int,
+                  response: Response,
+                  service: Annotated[Repo, Depends()]):
+    status, res = service.eliminar_area(id_area=id_area)
+    service.db.close()
+    if status:
+        response.status_code = 200
+    else:
+        response.status_code = 501
+    return res
+
+
+@areas.put("/actualizar_area")
+def actualizar_area(*,
+                    id_area: int,
+                    area: RegistrarArea,
+                    response: Response,
+                    service: Annotated[Repo, Depends()]):
+    status, res = service.actualizar_area(id_area=id_area
+                                          , area=area)
+    service.db.close()
     if status:
         response.status_code = 200
     else:
@@ -283,4 +465,5 @@ def password_reset(*,
 app.include_router(usuarios)
 app.include_router(reportes)
 app.include_router(auth)
-
+app.include_router(areas)
+app.include_router(categorias)
