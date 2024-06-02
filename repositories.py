@@ -33,6 +33,7 @@ class Repo:
         self.db = self.db_obj.connection(database=database)
 
     def registrar_escuela(self, data: RegistrarEscuela):
+        new_db = None
         database_name = data.school_name.lower() + "-db"
         main_db = self.db_obj.connection(database="fim_main")
         school = SchoolDatabases(
@@ -42,7 +43,8 @@ class Repo:
         )
         try:
             get_db = (main_db.query(SchoolDatabases)
-                      .filter(SchoolDatabases.school_name == data.school_name)
+                      .where(SchoolDatabases.school_name == data.school_name)
+                      .where(SchoolDatabases.school_key == data.school_key)
                       .order_by(SchoolDatabases.id_school).first())
             if not get_db:
                 if not database_exists("mysql+mysqlconnector://rosario:Bosschapo300@159.54.134.179:3306/" + database_name):
@@ -85,11 +87,16 @@ class Repo:
                 main_db.flush()
                 main_db.commit()
                 main_db.refresh(school)
+                main_db.close()
                 return True, {"status": 1, "detail": "Succesful Insert", "db": database_name}
             else:
+                main_db.close()
                 return False, {"status": 0, "detail": "Escuela ya Existe", "db": database_name}
         except Exception as err:
             print(err)
+            main_db.rollback()
+            main_db.close()
+            new_db.rollback()
             return False, {"status": 0, "detail": err}
 
     def login(self, no_cuenta: str, password: str):
@@ -100,11 +107,14 @@ class Repo:
             user = self.db.query(Usuario).filter(Usuario.noCuenta == no_cuenta).order_by(Usuario.ID_user).first()
             if user:
                 if user.passwd == password:
+                    main_db.close()
                     return True, {"status": 1, "detail": "sesion iniciada", "usuario": user,
                                   "database": db.database_name}
                 else:
+                    main_db.close()
                     return False, {"status": 0, "detail": "contraseña incorrecta"}
             else:
+                main_db.close()
                 return False, {"status": 0, "detail": "usuario inexistente"}
         except Exception as err:
             print(err)
@@ -138,13 +148,18 @@ class Repo:
                     self.db.commit()
                     self.db.refresh(user)
                     self.sendEmailVerification(id_usuario=user.ID_user, email=user.correo)
+                    main_db.close()
                     return True, {"status": 1, "detail": "Succesful Insert"}
                 else:
+                    main_db.close()
                     return False, {"status": 0, "detail": "Usuario ya existe en esta escuela"}
             else:
+                main_db.close()
                 return False, {"status": 0, "detail": "Usuario ya existe en otra escuela"}
         except Exception as err:
             print(err)
+            self.db.rollback()
+            main_db.rollback()
             return False, {"status": 0, "detail": err}
 
     def registrar_usuario(self, data: RegistrarUsuario):

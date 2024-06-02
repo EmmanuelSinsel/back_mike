@@ -74,9 +74,8 @@ def registrar(*,
 def login(*,
           usuario: str,
           password: str,
-          response: Response,
-          school: Annotated[str | None, Header()] = None, ):
-    service = Repo(database=school)
+          response: Response):
+    service = Repo(database="fim_main")
     status, res = service.login(no_cuenta=usuario,
                                 password=password)
     service.db.close()
@@ -90,9 +89,8 @@ def login(*,
 @usuarios.post("/registrar_usuario")
 def registrar(*,
               data: RegistrarUsuario,
-              response: Response,
-              school: Annotated[str | None, Header()] = None):
-    service = Repo(database=school)
+              response: Response):
+    service = Repo(database="main_fim")
     status, res = service.registrar(data=data)
     service.db.close()
     if status:
