@@ -7,16 +7,16 @@ from sqlalchemy.orm import sessionmaker
 load_dotenv()
 
 class Database:
-    server = str(os.getenv('DB_HOST')) + ":" + str(os.getenv('DB_PORT'))
-    database = os.getenv('DB_DATABASE')
-    username = os.getenv('DB_USER')
-    password = os.getenv('DB_PASSWORD')
-    params = ("mysql+mysqlconnector://"+username+":"+password+
-              "@"+server+"/"+database)
+    engine = None
 
-    engine = create_engine(params, echo=True, pool_size=10, max_overflow=20)
-
-    def connection(self):
+    def connection(self, database):
+        server = str(os.getenv('DB_HOST')) + ":" + str(os.getenv('DB_PORT'))
+        username = os.getenv('DB_USER')
+        password = os.getenv('DB_PASSWORD')
+        params = ("mysql+mysqlconnector://" + username + ":" + password +
+                  "@" + server + "/" + database)
+        print(params)
+        self.engine = create_engine(params, echo=True, pool_size=10, max_overflow=20)
         db = sessionmaker(bind=self.engine)
         conn = db()
         return conn

@@ -20,6 +20,15 @@ def _get_date():
 class Base(DeclarativeBase):
     pass
 
+
+class SchoolDatabases(Base):
+    __tablename__ = "school_databases"
+
+    id_school: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    school_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    database_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    school_key: Mapped[str] = mapped_column(String(45), nullable=False)
+
 class Reportes(Base):
     __tablename__ = "reportes"
 
@@ -49,6 +58,13 @@ class Usuario(Base):
     correo: Mapped[str] = mapped_column(String(100), nullable=False)
     estatus: Mapped[int] = mapped_column(nullable=False)
 
+
+class UsuarioMain(Base):
+    __tablename__ = "usuarios_main"
+
+    id_usuario: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    no_cuenta: Mapped[str] = mapped_column(String(100), nullable=False)
+    id_school: Mapped[int] = mapped_column(nullable=False)
 
 class Tokens(Base):
     __tablename__ = "tokens"

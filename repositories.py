@@ -5,9 +5,11 @@ import sqlalchemy
 
 from database import Database
 from sqlalchemy import select, or_
+from sqlalchemy.sql import text
 import datetime
 from datetime import date
 from models import *
+from sqlalchemy_utils import database_exists, create_database
 
 from dtos import *
 
@@ -22,18 +24,84 @@ import random
 
 class Repo:
     db = None
+    db_obj = None
     characters = string.ascii_letters + string.digits
     dominio = "reportesuasfim.ddns.net"
 
-    def __init__(self):
-        db_obj = Database()
-        self.db = db_obj.connection()
+    def __init__(self, database):
+        self.db_obj = Database()
+        self.db = self.db_obj.connection(database=database)
+
+    def registrar_escuela(self, data: RegistrarEscuela):
+        database_name = data.school_name.lower() + "-db"
+        main_db = self.db_obj.connection(database="fim_main")
+        school = SchoolDatabases(
+            school_name=data.school_name,
+            database_name=data.database_name,
+            school_key=data.school_key
+        )
+        try:
+            get_db = (main_db.query(SchoolDatabases)
+                      .filter(SchoolDatabases.school_name == data.school_name)
+                      .order_by(SchoolDatabases.id_school).first())
+            if not get_db:
+                if not database_exists("mysql+mysqlconnector://rosario:Bosschapo300@159.54.134.179:3306/" + database_name):
+                    create_database("mysql+mysqlconnector://rosario:Bosschapo300@159.54.134.179:3306/" + database_name)
+                    print("SI")
+                    new_db = self.db_obj.connection(database=data.database_name)
+                    new_areas = (
+                        'CREATE TABLE areas (`id_area` int NOT NULL AUTO_INCREMENT,`nombre_area` varchar(500) '
+                        'NOT NULL,PRIMARY KEY (`id_area`)) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 '
+                        'COLLATE=utf8mb4_0900_ai_ci;')
+                    new_categorias = (
+                        'CREATE TABLE categorias (`id_categoria` int NOT NULL AUTO_INCREMENT,`nombre_categoria` '
+                        'varchar(500) NOT NULL,PRIMARY KEY (`id_categoria`)) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT'
+                        ' CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;')
+                    new_reportes = (
+                        'CREATE TABLE reportes (`ID_report` int NOT NULL AUTO_INCREMENT,`nomReport` varchar(45) '
+                        'NOT NULL,`descripcion` varchar(500) NOT NULL,`fecha_report` date NOT NULL,`evidencia` '
+                        'longblob NOT NULL,`autor` int NOT NULL,`estatus` char(30) NOT NULL,`urgencia` int NOT NULL,'
+                        '`privacidad` int NOT NULL,`tipo_report` char(30) NOT NULL,`responsable` int DEFAULT NULL,'
+                        '`evidencia_atendido` longblob,PRIMARY KEY (`ID_report`)) ENGINE=InnoDB AUTO_INCREMENT=0 '
+                        'DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;')
+                    new_tokens = (
+                        'CREATE TABLE tokens (`id_tokens` int NOT NULL AUTO_INCREMENT,`token` varchar(45) DEFAULT NULL,'
+                        '`token_type` varchar(3) DEFAULT NULL,`expiration` datetime DEFAULT NULL,`expirated` int'
+                        ' DEFAULT NULL,`id_usuario` int DEFAULT NULL,PRIMARY KEY (`id_tokens`)) '
+                        'ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;')
+                    new_usuarios = (
+                        'CREATE TABLE usuarios (`ID_user` int NOT NULL AUTO_INCREMENT,`tipoUser` char(30) DEFAULT '
+                        'NULL,`nomUser` varchar(100) NOT NULL,`passwd` char(30) NOT NULL,`cargo` char(30) NOT NULL,`area`'
+                        ' varchar(300) NOT NULL,`correo` varchar(100) DEFAULT NULL,`estatus` int DEFAULT NULL,`noCuenta` '
+                        'varchar(30) DEFAULT NULL,PRIMARY KEY (`ID_user`)) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT '
+                        'CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;')
+                    new_db.execute(text(new_areas))
+                    new_db.execute(text(new_categorias))
+                    new_db.execute(text(new_reportes))
+                    new_db.execute(text(new_tokens))
+                    new_db.execute(text(new_usuarios))
+                    new_db.commit()
+                main_db.add(school)
+                main_db.flush()
+                main_db.commit()
+                main_db.refresh(school)
+                return True, {"status": 1, "detail": "Succesful Insert", "db": database_name}
+            else:
+                return False, {"status": 0, "detail": "Escuela ya Existe", "db": database_name}
+        except Exception as err:
+            print(err)
+            return False, {"status": 0, "detail": err}
+
     def login(self, no_cuenta: str, password: str):
         try:
+            main_db = self.db_obj.connection(database="fim_main")
+            db_user = main_db.query(UsuarioMain).where(UsuarioMain.no_cuenta == no_cuenta).first()
+            db = main_db.query(SchoolDatabases).where(SchoolDatabases.id_school == db_user.id_school).first()
             user = self.db.query(Usuario).filter(Usuario.noCuenta == no_cuenta).order_by(Usuario.ID_user).first()
             if user:
                 if user.passwd == password:
-                    return True, {"status": 1, "detail": "sesion iniciada","usuario":user}
+                    return True, {"status": 1, "detail": "sesion iniciada", "usuario": user,
+                                  "database": db.database_name}
                 else:
                     return False, {"status": 0, "detail": "contraseña incorrecta"}
             else:
@@ -43,17 +111,55 @@ class Repo:
             return False, {"detail": err}
 
     def registrar(self, data: RegistrarUsuario):
+        main_db = self.db_obj.connection(database="fim_main")
         user = Usuario(
             tipoUser=data.tipo,
             nomUser=data.usuario,
-            noCuenta=data.matricula, #
-            passwd=data.password, #
+            noCuenta=data.matricula,  #
+            passwd=data.password,  #
             cargo=data.cargo,
             area=data.area,
-            correo=data.correo #
+            correo=data.correo  #
+        )
+        school = self.db.query(SchoolDatabases).where(SchoolDatabases.id_school == data.clave_escuela).first()
+        main_db_user = UsuarioMain(
+            no_cuenta=data.matricula,
+            id_school=school.id_school
         )
         try:
-            get_user = self.db.query(Usuario).filter(Usuario.noCuenta == data.matricula).order_by(Usuario.ID_user).first()
+            get_user = self.db.query(Usuario).filter(Usuario.noCuenta == data.matricula).order_by(
+                Usuario.ID_user).first()
+            get_main_db_user = main_db.query(UsuarioMain).where(UsuarioMain.no_cuenta == data.matricula).first()
+            if not get_main_db_user:
+                if not get_user:
+                    self.db.add(user)
+                    self.db.add(main_db_user)
+                    self.db.flush()
+                    self.db.commit()
+                    self.db.refresh(user)
+                    self.sendEmailVerification(id_usuario=user.ID_user, email=user.correo)
+                    return True, {"status": 1, "detail": "Succesful Insert"}
+                else:
+                    return False, {"status": 0, "detail": "Usuario ya existe en esta escuela"}
+            else:
+                return False, {"status": 0, "detail": "Usuario ya existe en otra escuela"}
+        except Exception as err:
+            print(err)
+            return False, {"status": 0, "detail": err}
+
+    def registrar_usuario(self, data: RegistrarUsuario):
+        user = Usuario(
+            tipoUser=data.tipo,
+            nomUser=data.usuario,
+            noCuenta=data.matricula,  #
+            passwd=data.password,  #
+            cargo=data.cargo,
+            area=data.area,
+            correo=data.correo  #
+        )
+        try:
+            get_user = self.db.query(Usuario).filter(Usuario.noCuenta == data.matricula).order_by(
+                Usuario.ID_user).first()
             if not get_user:
                 self.db.add(user)
                 self.db.flush()
@@ -66,32 +172,6 @@ class Repo:
         except Exception as err:
             print(err)
             return False, {"status": 0, "detail": err}
-
-    def registrar_usuario(self, data: RegistrarUsuario):
-            user = Usuario(
-                tipoUser=data.tipo,
-                nomUser=data.usuario,
-                noCuenta=data.matricula,  #
-                passwd=data.password,  #
-                cargo=data.cargo,
-                area=data.area,
-                correo=data.correo  #
-            )
-            try:
-                get_user = self.db.query(Usuario).filter(Usuario.noCuenta == data.matricula).order_by(
-                    Usuario.ID_user).first()
-                if not get_user:
-                    self.db.add(user)
-                    self.db.flush()
-                    self.db.commit()
-                    self.db.refresh(user)
-                    self.sendEmailVerification(id_usuario=user.ID_user, email=user.correo)
-                    return True, {"status": 1, "detail": "Succesful Insert"}
-                else:
-                    return False, {"status": 0, "detail": "Usuario ya Existe"}
-            except Exception as err:
-                print(err)
-                return False, {"status": 0, "detail": err}
 
     def reasignar_area(self, id_usuario: int, area: str, tipoUser: str):
         try:
@@ -137,13 +217,14 @@ class Repo:
                             "nomReport": i.nomReport,
                             "fecha_report": i.fecha_report,
                             "estatus": i.estatus,
-                            "urgencia": i. urgencia
+                            "urgencia": i.urgencia
                         })
                     data['reportes'] = temp
             return True, data
         except Exception as err:
             print(err)
             return False, {"status": 0, "detail": err}
+
     def generar_reporte(self, data: RegistrarReporte):
         fecha_actual = date.today()
         print(fecha_actual)
@@ -153,7 +234,7 @@ class Repo:
             "evidencia_3": data.evidencia_3,
         }
         evidencia_bytes = json.dumps(evidencia).encode(encoding="UTF-8")
-        #print(evidencia)
+        # print(evidencia)
         reporte = Reportes(
             nomReport=data.nom_reporte,
             descripcion=data.descripcion,
@@ -247,10 +328,10 @@ class Repo:
             return False, {"status": 0, "detail": err}
 
     def ver_historial_responsable(self,
-                      id_responsable: int,
-                      estatus: str = None,
-                      tipo_report: str = None,
-                      urgencia: bool = False):
+                                  id_responsable: int,
+                                  estatus: str = None,
+                                  tipo_report: str = None,
+                                  urgencia: bool = False):
         query_full = None
         query_estatus = None
         query_tipo = None
@@ -575,8 +656,6 @@ class Repo:
             print(err)
             return False, {"status": 0, "detail": str(err)}
 
-
-
     #  EMAILS
 
     def sendEmailVerification(self,
@@ -620,7 +699,7 @@ class Repo:
             today = parse(str(datetime.today()))
             if token_data.expirated == False:
                 if today < expiration_date:
-                    #print('id del usuario a activar: ' + token_data.id_usuario)
+                    # print('id del usuario a activar: ' + token_data.id_usuario)
                     usuario = self.db.query(Usuario).filter(Usuario.ID_user == token_data.id_usuario).first()
                     token_data.expirated = True
                     usuario.estatus = 1
@@ -787,7 +866,7 @@ class Repo:
             print(err)
             return False, {"status": 0, "detail": err}
 
-    #AREAS
+    # AREAS
 
     def lista_areas(self):
         try:
@@ -828,8 +907,8 @@ class Repo:
             return False, {"status": 0, "detail": err}
 
     def actualizar_area(self,
-                             id_area,
-                             area: RegistrarArea):
+                        id_area,
+                        area: RegistrarArea):
         try:
             cat = self.db.query(Area).where(Area.id_area == id_area).first()
             cat.nombre_area = area.nombre_area
@@ -857,7 +936,3 @@ class emailSender:
             smtp_server.login(self.sender, self.password)
             smtp_server.sendmail(self.sender, recipients, msg.as_string())
         print("Message sent!")
-
-
-
-

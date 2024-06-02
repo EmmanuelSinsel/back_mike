@@ -1,6 +1,6 @@
 import datetime
 
-from fastapi import APIRouter, FastAPI, Depends, Response
+from fastapi import APIRouter, FastAPI, Depends, Response, Header
 from typing import Annotated
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
@@ -53,15 +53,33 @@ auth = APIRouter(
 )
 
 
+# BASES DE DATOS
+@usuarios.post("/registrar_escuela")
+def registrar(*,
+              data: RegistrarEscuela,
+              response: Response):
+    service = Repo(database="fim_main")
+    status, res = service.registrar_escuela(data=data)
+    service.db.close()
+    if status:
+        response.status_code = 201
+    else:
+        response.status_code = 501
+    return res
+
+
+
 # USUARIOS
 @usuarios.get("/login")
 def login(*,
           usuario: str,
           password: str,
           response: Response,
-          service: Annotated[Repo, Depends()]):
+          school: Annotated[str | None, Header()] = None, ):
+    service = Repo(database=school)
     status, res = service.login(no_cuenta=usuario,
                                 password=password)
+    service.db.close()
     if status:
         response.status_code = 200
     else:
@@ -73,8 +91,10 @@ def login(*,
 def registrar(*,
               data: RegistrarUsuario,
               response: Response,
-              service: Annotated[Repo, Depends()]):
+              school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.registrar(data=data)
+    service.db.close()
     if status:
         response.status_code = 201
     else:
@@ -88,8 +108,10 @@ def reasignar(*,
               area: str,
               tipoUser: str,
               response: Response,
-              service: Annotated[Repo, Depends()]):
+              school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.reasignar_area(id_usuario=id_usuario, area=area, tipoUser=tipoUser)
+    service.db.close()
     if status:
         response.status_code = 201
     else:
@@ -101,8 +123,10 @@ def reasignar(*,
 def generar_reporte(*,
                     id_usuario: int,
                     response: Response,
-                    service: Annotated[Repo, Depends()]):
+                    school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.detalle_usuario(id_usuario=id_usuario)
+    service.db.close()
     if status:
         response.status_code = 201
     else:
@@ -115,8 +139,10 @@ def generar_reporte(*,
 def generar_reporte(*,
                     data: RegistrarReporte,
                     response: Response,
-                    service: Annotated[Repo, Depends()]):
+                    school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.generar_reporte(data=data)
+    service.db.close()
     if status:
         response.status_code = 201
     else:
@@ -131,11 +157,13 @@ def ver_historial(*,
                   tipo_report: str = None,
                   urgencia: bool = True,
                   response: Response,
-                  service: Annotated[Repo, Depends()]):
+                  school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.ver_historial(id_usuario=id_usuario,
                                         estatus=estatus,
                                         tipo_report=tipo_report,
                                         urgencia=urgencia)
+    service.db.close()
     if status:
         response.status_code = 200
     else:
@@ -150,11 +178,13 @@ def ver_historial_responsable(*,
                               tipo_report: str = None,
                               urgencia: bool = True,
                               response: Response,
-                              service: Annotated[Repo, Depends()]):
+                              school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.ver_historial_responsable(id_responsable=id_usuario,
                                                     estatus=estatus,
                                                     tipo_report=tipo_report,
                                                     urgencia=urgencia)
+    service.db.close()
     if status:
         response.status_code = 200
     else:
@@ -166,8 +196,10 @@ def ver_historial_responsable(*,
 def eliminar_reporte(*,
                      id_reporte: int,
                      response: Response,
-                     service: Annotated[Repo, Depends()]):
+                     school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.eliminar_reporte(id_reporte=id_reporte)
+    service.db.close()
     if status:
         response.status_code = 200
     else:
@@ -179,8 +211,10 @@ def eliminar_reporte(*,
 def repostear_reporte(*,
                       id_reporte: int,
                       response: Response,
-                      service: Annotated[Repo, Depends()]):
+                      school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.repostear_reporte(id_reporte=id_reporte)
+    service.db.close()
     if status:
         response.status_code = 200
     else:
@@ -195,11 +229,13 @@ def ver_reportes(*,
                  urgencia: bool = False,
                  sin_asignar: bool = False,
                  response: Response,
-                 service: Annotated[Repo, Depends()]):
+                 school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.ver_reportes(estatus=estatus,
                                        tipo_report=tipo_report,
                                        urgencia=urgencia,
                                        sin_asignar=sin_asignar)
+    service.db.close()
     if status:
         response.status_code = 200
     else:
@@ -211,8 +247,10 @@ def ver_reportes(*,
 def ver_detalles(*,
                  id_reporte: int,
                  response: Response,
-                 service: Annotated[Repo, Depends()]):
+                 school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.ver_detalles(id_reporte=id_reporte)
+    service.db.close()
     if status:
         response.status_code = 200
     else:
@@ -225,8 +263,10 @@ def actualizar_estado(*,
                       id_reporte: int,
                       estado: str,
                       response: Response,
-                      service: Annotated[Repo, Depends()]):
+                      school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.actualizar_estado(id_reporte=id_reporte, estado=estado)
+    service.db.close()
     if status:
         response.status_code = 200
     else:
@@ -234,27 +274,16 @@ def actualizar_estado(*,
     return res
 
 
-# @reportes.patch("/reasignar_reporte")
-# def reasignar(*,
-#               id_reporte: int,
-#               area: str,
-#               response: Response,
-#               service: Annotated[Repo, Depends()]):
-#     status, res = service.reasignar(id_reporte=id_reporte, area=area)
-#     if status:
-#         response.status_code = 200
-#     else:
-#         response.status_code = 501
-#     return res
-
 @reportes.patch("/reasignar_reporte")
 def reasignar(*,
               id_reporte: int,
               area: str,
               ID_user: int,
               response: Response,
-              service: Annotated[Repo, Depends()]):
+              school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.reasignar(id_reporte=id_reporte, area=area, ID_user=ID_user)
+    service.db.close()
     if status:
         response.status_code = 200
     else:
@@ -267,8 +296,10 @@ def evidencias_atendido(*,
                         id_reporte: int,
                         data: EvidenciasAtendido,
                         response: Response,
-                        service: Annotated[Repo, Depends()]):
+                        school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.evidencias_atendido(id_reporte=id_reporte, data=data)
+    service.db.close()
     if status:
         response.status_code = 200
     else:
@@ -279,8 +310,10 @@ def evidencias_atendido(*,
 @usuarios.get("/lista_usuarios")
 def lista_usuarios(*,
                    response: Response,
-                   service: Annotated[Repo, Depends()]):
+                   school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.lista_usuarios()
+    service.db.close()
     if status:
         response.status_code = 200
     else:
@@ -292,7 +325,8 @@ def lista_usuarios(*,
 def lista_usuarios_area(*,
                         area: str,
                         response: Response,
-                        service: Annotated[Repo, Depends()]):
+                        school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.lista_usuarios_area(area=area)
     service.db.close()
     if status:
@@ -306,7 +340,8 @@ def lista_usuarios_area(*,
 def verificar_cuenta(*,
                      token: str,
                      response: Response,
-                     service: Annotated[Repo, Depends()]):
+                     school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.verificarToken(token=token)
     service.db.close()
     if status:
@@ -321,7 +356,8 @@ def enviar_correo_password_reset(*,
                                  email: str,
                                  id_usuario: int,
                                  response: Response,
-                                 service: Annotated[Repo, Depends()]):
+                                 school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.enviarCorreoPasswordReset(email=email,
                                                     id_usuario=id_usuario)
     service.db.close()
@@ -337,7 +373,8 @@ def password_reset(*,
                    token: str,
                    new_password: str,
                    response: Response,
-                   service: Annotated[Repo, Depends()]):
+                   school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.passwordReset(token=token,
                                         new_password=new_password)
     service.db.close()
@@ -351,7 +388,8 @@ def password_reset(*,
 @categorias.get("/lista_categorias")
 def lista_categorias(
         response: Response,
-        service: Annotated[Repo, Depends()]):
+        school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.lista_categorias()
     service.db.close()
     if status:
@@ -365,7 +403,8 @@ def lista_categorias(
 def registrar_categoria(*,
                         categoria: RegistrarCategoria,
                         response: Response,
-                        service: Annotated[Repo, Depends()]):
+                        school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.registrar_categoria(categoria=categoria)
     service.db.close()
     if status:
@@ -379,7 +418,8 @@ def registrar_categoria(*,
 def eliminar_categoria(*,
                        id_categoria: int,
                        response: Response,
-                       service: Annotated[Repo, Depends()]):
+                       school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.eliminar_categoria(id_categoria=id_categoria)
     service.db.close()
     if status:
@@ -394,7 +434,8 @@ def actualizar_categoria(*,
                          id_categoria: int,
                          categoria: RegistrarCategoria,
                          response: Response,
-                         service: Annotated[Repo, Depends()]):
+                         school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.actualizar_categoria(id_categoria=id_categoria,
                                                categoria=categoria)
     service.db.close()
@@ -408,7 +449,8 @@ def actualizar_categoria(*,
 @areas.get("/lista_areas")
 def lista_areas(
         response: Response,
-        service: Annotated[Repo, Depends()]):
+        school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.lista_areas()
     service.db.close()
     if status:
@@ -422,7 +464,8 @@ def lista_areas(
 def registrar_area(*,
                    area: RegistrarArea,
                    response: Response,
-                   service: Annotated[Repo, Depends()]):
+                   school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.registrar_area(area=area)
     service.db.close()
     if status:
@@ -436,7 +479,8 @@ def registrar_area(*,
 def eliminar_area(*,
                   id_area: int,
                   response: Response,
-                  service: Annotated[Repo, Depends()]):
+                  school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.eliminar_area(id_area=id_area)
     service.db.close()
     if status:
@@ -451,7 +495,8 @@ def actualizar_area(*,
                     id_area: int,
                     area: RegistrarArea,
                     response: Response,
-                    service: Annotated[Repo, Depends()]):
+                    school: Annotated[str | None, Header()] = None):
+    service = Repo(database=school)
     status, res = service.actualizar_area(id_area=id_area
                                           , area=area)
     service.db.close()
